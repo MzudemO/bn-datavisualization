@@ -1,0 +1,7 @@
+# Dataset files
+*.html
+*.csv
+
+# Compiled files
+__pycache__/
+.vscode/

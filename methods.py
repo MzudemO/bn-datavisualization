@@ -215,7 +215,39 @@ def unique_mappers_nominated(
     )
 
 
-# Filters list of nominators by number of nominations
+# Counts ranked maps per BN per timeperiod (must be in pandas.tseries.offsets)
+# Returns new pd.DataFrame["date": datetime, "user_id": int, "count": int]
+def ranked_per_period_per_bn(
+    mapsets: pd.DataFrame = None, nominators: pd.DataFrame = None, period: str = "M"
+) -> pd.DataFrame:
+    nominators = filter_by_noms(mapsets, nominators, threshold=0, minimum=True)
+    mapsets = mapsets.copy()
+    mapsets["date"] = pd.to_datetime(mapsets["date"])
+    mapsets["date"] = mapsets["date"].dt.to_period(period).dt.to_timestamp()
+    mapsets = (
+        mapsets.drop(
+            columns=[
+                "host_id",
+                "artist",
+                "title",
+                "nomination_reset",
+                "disqualification",
+            ]
+        )
+        .melt(id_vars=["date"])
+        .drop(columns=["variable"])
+    )
+    mapsets = (
+        mapsets.groupby(["date", "value"])
+        .size()
+        .to_frame(name="nr_ranked")
+        .reset_index()
+    ).rename(columns={"value": "user_id"})
+    mapsets = pd.merge(left=mapsets, right=nominators, on="user_id")
+    return mapsets
+
+
+# Filters list of nominators by number of nominations (uses gt/lt, threshold is excluded)
 # Returns new pd.DataFrame
 def filter_by_noms(
     mapsets: pd.DataFrame = None,
@@ -234,4 +266,3 @@ def filter_by_noms(
     else:
         nominators = nominators.loc[nominators["nominations"] < threshold]
     return nominators.drop(columns="nominations")
-
